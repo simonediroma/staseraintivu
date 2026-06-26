@@ -46,6 +46,15 @@ export class ChannelStore {
     return rows;
   }
 
+  /** True se esiste un canale canonico con questo id (guard pre-approve). */
+  async channelExists(canonicalId: string): Promise<boolean> {
+    const { rows } = await pool.query(
+      'SELECT 1 FROM canonical_channels WHERE id = $1',
+      [canonicalId]
+    );
+    return rows.length > 0;
+  }
+
   /** Registra/aggiorna un canale irrisolto nella coda di revisione. */
   async queueUnresolved(
     source: string,

@@ -4,6 +4,8 @@
  * e header di cache. Tenuti qui per non duplicare logica tra i route.
  */
 
+import crypto from 'node:crypto';
+
 export const ROME_TZ = 'Europe/Rome';
 
 /** Cache standard endpoint freschi: 1h edge + 24h stale-while-revalidate. */
@@ -60,4 +62,66 @@ export function serializeProgramme(r: ProgrammeRow) {
     description: r.descr,
     categories: r.categories,
   };
+}
+
+/** Riga grezza di un risultato di ricerca (subset di programmes × canale). */
+export interface SearchRow {
+  channel_id: string;
+  channel_name: string;
+  start_at: Date | string;
+  stop_at: Date | string | null;
+  title: string;
+  descr: string | null;
+  categories: string[];
+}
+
+/**
+ * Shape FISSA del risultato di ricerca (vedi docs/architecture.md): nessun campo
+ * extra speculativo — ogni campo esposto è un contratto (Hyrum's Law).
+ */
+export function serializeSearchResult(r: SearchRow) {
+  return {
+    channelId: r.channel_id,
+    channelName: r.channel_name,
+    startAt: new Date(r.start_at).toISOString(),
+    stopAt: r.stop_at ? new Date(r.stop_at).toISOString() : null,
+    title: r.title,
+    description: r.descr,
+    categories: r.categories,
+  };
+}
+
+/** Riga grezza dalla coda dei canali irrisolti. */
+export interface UnresolvedRow {
+  source: string;
+  source_id: string;
+  display_name: string;
+  suggestions: unknown;
+  first_seen: Date | string;
+  last_seen: Date | string;
+}
+
+/** Mappa la coda di revisione in camelCase ISO (la PK è source+source_id, niente ID interni). */
+export function serializeUnresolved(r: UnresolvedRow) {
+  return {
+    source: r.source,
+    sourceId: r.source_id,
+    displayName: r.display_name,
+    suggestions: r.suggestions,
+    firstSeen: new Date(r.first_seen).toISOString(),
+    lastSeen: new Date(r.last_seen).toISOString(),
+  };
+}
+
+/**
+ * Confronto constant-time della X-Admin-Key (previene timing attack), coerente
+ * con `tokenValid` di /api/revalidate. `timingSafeEqual` lancia se i buffer
+ * hanno lunghezze diverse: lo evitiamo a monte.
+ */
+export function adminKeyValid(provided: string | null): boolean {
+  const expected = process.env.ADMIN_KEY;
+  if (!expected || !provided) return false;
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
 }

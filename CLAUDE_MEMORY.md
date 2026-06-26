@@ -11,33 +11,33 @@
 - [x] M3 — EPG Store + Channel Store (channel-store.ts + epg-store.ts su singleton db.ts, build + 17 test verdi)
 - [x] M4 — Ingest Worker + GitHub Actions (src/lib/epg/ingest.ts + scripts/ingest.ts + .github/workflows/ingest.yml, build + 20 test verdi)
 - [x] M5 — API Route Handlers palinsesto (tonight/schedule/channels/revalidate + lib/api.ts, build + 41 test verdi)
-- [ ] M6 — API Search + Admin
+- [x] M6 — API Search + Admin (search + admin/unresolved + admin/approve, build + 70 test verdi)
 - [ ] UI-1 — Layout + Home
 - [ ] UI-2 — Pagine Giorno + Canale
 - [ ] UI-3 — Ricerca + Admin Panel
 
 ## Prossima sessione — inizia da qui
 
-**M1–M5 CHIUSI.** API palinsesto pronte: `/api/tonight` (prima serata, usa
-`EpgStore.tonight()` + `tonightWindow`), `/api/schedule?date=&channel=` (giorno intero,
-`EpgStore.schedule(from,to,channel?)`, finestra calendario Europe/Rome via
-`zonedWallTimeToUtc`), `/api/channels` (`ChannelStore.listActiveChannels()`),
-`/api/revalidate` (POST, Bearer `REVALIDATE_TOKEN` con `crypto.timingSafeEqual`).
-Helper condivisi in `src/lib/api.ts` (`isValidDate`, `isSlug`, `romeToday`,
-`serializeProgramme`, costanti cache). L'endpoint `/api/revalidate` ORA ESISTE: il
-revalidate post-ingest non fallirà più (se i secret del workflow sono configurati).
-Build + 41 test verdi.
+**M1–M6 CHIUSI. TUTTE LE API BACKEND PRONTE.** Oltre al palinsesto (M5) ora ci sono:
+`/api/search?q=&limit=&offset=` (full-text tsvector, `EpgStore.search()` con
+`websearch_to_tsquery('italian',$1)` parametrizzato + `ts_rank`, shape `{results,total}`,
+`no-store`, header `X-RateLimit-Limit:30`), `/api/admin/unresolved` (GET, lista coda
+serializzata camelCase) e `/api/admin/approve` (POST, body `{source,sourceId,canonicalId}`,
+transazione via `ChannelStore.approveAlias`), entrambe protette da `X-Admin-Key`
+(`adminKeyValid` in `src/lib/api.ts`, `crypto.timingSafeEqual`). Helper M6 in `src/lib/api.ts`:
+`serializeSearchResult`, `serializeUnresolved`, `adminKeyValid`. Build + 70 test verdi.
 
 **AZIONE OPERATIVA per l'utente (ancora valida se non già fatta):** aggiungere su GitHub i
 secret per il workflow EPG Ingest: `XMLTV_URL`
 (es. `https://iptv-org.github.io/epg/guides/it/epg.xml.gz`), `REVALIDATE_TOKEN`,
 `NEXT_PUBLIC_SITE_URL` (`DATABASE_URL` già presente da M1). Poi lanciare "EPG Ingest" →
-"Run workflow" per il primo popolamento di `programmes`.
+"Run workflow" per il primo popolamento di `programmes`. `ADMIN_KEY` serve ora anche per
+testare le API admin.
 
-**Inizia da M6:** esegui `prompts/M6_*` (API Search + Admin: `/api/search` full-text
-tsvector, `/api/admin/unresolved` + `/api/admin/approve` protette da `X-Admin-Key`).
-Riusa il pattern M5: validazione input nel route handler, delega allo store, `src/lib/api.ts`
-per helper/serializzazione. `ChannelStore` ha già `listUnresolved`/`approveAlias`.
+**Inizia da UI-1:** esegui `prompts/UI-1_layout_home.md` (Layout + Home "stasera in TV").
+Il backend è completo: la UI consuma le API già esistenti (`/api/tonight` per la home).
+Configura `images.remotePatterns` in `next.config.ts` PRIMA di usare `<Image>` coi loghi
+canali esterni (vedi docs/lessons.md). Tailwind v4 dark mode built-in.
 
 Nota ambiente: tutto remoto (Vercel + GitHub Actions), NESSUN ambiente locale. Per girare
 script che toccano Neon usa un workflow GitHub Actions, non `.env.local`. I test NON
@@ -47,7 +47,33 @@ per il test ingest è in `src/lib/epg/__fixtures__/guide.xml`.
 ## Ultima sessione
 
 Data: 2026-06-26
-Branch: claude/prossimo-task-m5-4n9280 (M5).
+Branch: claude/prossimo-task-m6-k2swrn (M6).
+
+Fatto (sessione M6):
+- Creati 3 Route Handlers: `src/app/api/search/route.ts`,
+  `src/app/api/admin/unresolved/route.ts`, `src/app/api/admin/approve/route.ts`.
+  Pattern M5: validazione al boundary nel route, delega allo store, serializzazione in `api.ts`.
+- `/api/search`: `parseParams` valida `q` (non vuota, ≤100 char → altrimenti 400) e normalizza
+  `limit` (default 20, max 50) / `offset` (≥0). Delega a `EpgStore.search`. Shape `{results,total}`
+  (result fisso: channelId/channelName/startAt/stopAt/title/description/categories — no extra,
+  Hyrum). `Cache-Control: no-store` + header `X-RateLimit-Limit: 30`; abusi (input rifiutato)
+  loggati con `console.warn` (nessun enforcement in v1).
+- `EpgStore.search(q,limit,offset)`: `websearch_to_tsquery('italian',$1)` PARAMETRIZZATO
+  (input grezzo/`'; DROP TABLE…` → risultati vuoti, mai crash/injection), ordine `ts_rank DESC`.
+  LIMIT/OFFSET in subquery su `programmes` PRIMA del JOIN `canonical_channels`. `total` da
+  seconda query `count(*)`. Ritorna `{rows,total}`.
+- `/api/admin/*`: auth `X-Admin-Key` via `adminKeyValid` (`crypto.timingSafeEqual`, guard su
+  lunghezza, coerente con `tokenValid` di revalidate). Assente/errata → 401.
+- `/api/admin/unresolved` (GET): `ChannelStore.listUnresolved()` → `serializeUnresolved` (camelCase
+  ISO, nessun ID interno Postgres).
+- `/api/admin/approve` (POST): valida JSON + 3 campi non vuoti (trim) → 400 se incompleto/malformato.
+  Pre-check `ChannelStore.channelExists(canonicalId)` → 400 con messaggio chiaro se inesistente
+  (belt-and-suspenders col FK). Poi `approveAlias` (transazione INSERT alias + DELETE coda).
+- Helper aggiunti a `src/lib/api.ts`: `serializeSearchResult`, `serializeUnresolved`,
+  `adminKeyValid` (+ tipi `SearchRow`/`UnresolvedRow`).
+- TDD: scritti prima i test (RED confermato), poi implementazione (GREEN). 29 nuovi test
+  (api helpers + store search/channelExists + 3 route, mock `@/lib/db`/store). `npm test` 70 verdi,
+  `npm run build` verde (3 route ƒ dynamic registrate).
 
 Fatto (sessione M5):
 - Creati 4 Route Handlers App Router: `src/app/api/{tonight,schedule,channels,revalidate}/route.ts`.
