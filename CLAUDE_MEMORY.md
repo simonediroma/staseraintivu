@@ -12,7 +12,7 @@
 - [x] M4 — Ingest Worker + GitHub Actions (src/lib/epg/ingest.ts + scripts/ingest.ts + .github/workflows/ingest.yml, build + 20 test verdi)
 - [x] M5 — API Route Handlers palinsesto (tonight/schedule/channels/revalidate + lib/api.ts, build + 41 test verdi)
 - [x] M6 — API Search + Admin (search + admin/unresolved + admin/approve, build + 70 test verdi)
-- [ ] UI-1 — Layout + Home
+- [x] UI-1 — Layout + Home
 - [ ] UI-2 — Pagine Giorno + Canale
 - [ ] UI-3 — Ricerca + Admin Panel
 
@@ -34,10 +34,10 @@ secret per il workflow EPG Ingest: `XMLTV_URL`
 "Run workflow" per il primo popolamento di `programmes`. `ADMIN_KEY` serve ora anche per
 testare le API admin.
 
-**Inizia da UI-1:** esegui `prompts/UI-1_layout_home.md` (Layout + Home "stasera in TV").
-Il backend è completo: la UI consuma le API già esistenti (`/api/tonight` per la home).
-Configura `images.remotePatterns` in `next.config.ts` PRIMA di usare `<Image>` coi loghi
-canali esterni (vedi docs/lessons.md). Tailwind v4 dark mode built-in.
+**UI-1 CHIUSA. Inizia da UI-2:** esegui `prompts/UI-2_pagine_giorno_canale.md`.
+La home è pronta (ISR 1h, query diretta EpgStore.tonight(), griglia ordinata per LCN,
+dark mode, componenti: ChannelGrid/ChannelRow/ProgrammeCard/CategoryChip/DarkModeToggle).
+Branch UI-1: `claude/prossimo-task-u1-etgxc8`, build + 70 test verdi.
 
 Nota ambiente: tutto remoto (Vercel + GitHub Actions), NESSUN ambiente locale. Per girare
 script che toccano Neon usa un workflow GitHub Actions, non `.env.local`. I test NON
@@ -47,7 +47,7 @@ per il test ingest è in `src/lib/epg/__fixtures__/guide.xml`.
 ## Ultima sessione
 
 Data: 2026-06-26
-Branch: claude/prossimo-task-m6-k2swrn (M6).
+Branch: claude/prossimo-task-u1-etgxc8 (UI-1).
 
 Fatto (sessione M6):
 - Creati 3 Route Handlers: `src/app/api/search/route.ts`,
