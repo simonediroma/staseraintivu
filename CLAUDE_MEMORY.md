@@ -6,7 +6,7 @@
 
 **Avanzamento macros:**
 - [x] M0 — Scaffold Next.js 15
-- [~] M1 — Schema DB + Seed Canali (codice fatto + build/test verdi; manca SOLO eseguire `npx tsx scripts/migrate.ts` su Neon in locale)
+- [x] M1 — Schema DB + Seed Canali (eseguito su Neon via GitHub Actions, workflow verde)
 - [ ] M2 — EPG Core Lib (porta da oraintivu)
 - [ ] M3 — EPG Store + Channel Store
 - [ ] M4 — Ingest Worker + GitHub Actions
@@ -18,17 +18,16 @@
 
 ## Prossima sessione — inizia da qui
 
-**Prima cosa (chiude M1):** crea `.env.local` con `DATABASE_URL` pooled di Neon (vedi
-sezione variabili sotto) ed esegui `npx tsx scripts/migrate.ts` in locale. Verifica su
-Neon che esistano le 4 tabelle, i 3 indici e i 25 canali in `canonical_channels`. Rieseguilo
-una seconda volta per confermare l'idempotenza (non deve fallire). Poi marca M1 come `[x]`.
+**M1 CHIUSO.** Schema + 25 canali su Neon (eseguito via GitHub Actions "DB Migrate",
+workflow verde). La migration si rilancia in cloud quando serve: Actions → DB Migrate →
+Run workflow (richiede secret `DATABASE_URL` su GitHub, già configurato).
 
-Il codice di M1 è già scritto e pushato (`src/db/schema.sql`, `src/db/seed-channels.ts`,
-`scripts/migrate.ts`, test in `src/db/seed-channels.test.ts`). Build e test verdi.
-L'esecuzione su Neon NON è stata fatta dal container web (effimero, niente accesso a Neon).
+**Inizia da M2:** esegui `prompts/M2_epg_core_lib.md` (porta i moduli EPG core da
+`prototypes/` a `src/lib/epg/`: datetime.ts, parse-xmltv.ts, channel-alias.ts,
+prime-time.ts — INVARIATI, copia as-is). M2-M4 sbloccate.
 
-**Poi:** esegui `prompts/M2_epg_core_lib.md` (porta i moduli EPG core da `prototypes/` a
-`src/lib/epg/`). M2-M4 sbloccate: i prototipi EPG sono in `prototypes/` (vedi sotto).
+Nota ambiente: tutto remoto (Vercel + GitHub Actions), NESSUN ambiente locale. Per girare
+script che toccano Neon usa il workflow GitHub Actions, non `.env.local`.
 
 ## Ultima sessione
 
