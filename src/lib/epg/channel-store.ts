@@ -4,7 +4,7 @@ import {
   type CanonicalChannel,
   type ChannelAlias,
   type ResolveResult,
-} from './channel-alias.js';
+} from './channel-alias';
 
 /**
  * Accesso DB ai canali. Usa il singleton `@/lib/db` — nessun Pool proprio.
@@ -33,6 +33,17 @@ export class ChannelStore {
     }));
 
     return new ChannelResolver(canonicals, aliases.rows);
+  }
+
+  /** Canali attivi per la lista pubblica, ordinati per posizione (LCN). */
+  async listActiveChannels() {
+    const { rows } = await pool.query(
+      `SELECT id, name, lcn, logo_url AS "logoUrl"
+       FROM canonical_channels
+       WHERE is_active = true
+       ORDER BY sort_order ASC`
+    );
+    return rows;
   }
 
   /** Registra/aggiorna un canale irrisolto nella coda di revisione. */

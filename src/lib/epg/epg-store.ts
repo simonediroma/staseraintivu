@@ -45,6 +45,29 @@ export class EpgStore {
   }
 
   /**
+   * Palinsesto di un giorno: tutti i programmi nella finestra [fromUtc, toUtc),
+   * opzionalmente filtrati per canale. Ordine (channel_id, start_at) per la UI.
+   */
+  async schedule(fromUtc: Date, toUtc: Date, channelId?: string) {
+    const params: unknown[] = [fromUtc.toISOString(), toUtc.toISOString()];
+    let filter = '';
+    if (channelId) {
+      params.push(channelId);
+      filter = ' AND p.channel_id = $3';
+    }
+    const { rows } = await pool.query(
+      `SELECT p.channel_id, c.name AS channel_name, c.lcn, c.logo_url AS channel_logo,
+              p.start_at, p.stop_at, p.title, p.sub_title, p.descr, p.categories
+       FROM programmes p
+       JOIN canonical_channels c ON c.id = p.channel_id
+       WHERE p.start_at >= $1 AND p.start_at < $2${filter}
+       ORDER BY p.channel_id, p.start_at ASC`,
+      params
+    );
+    return rows;
+  }
+
+  /**
    * "Stasera in TV": per ogni canale il primo programma nella finestra.
    * DISTINCT ON è il modo idiomatico in Postgres per il "primo per gruppo".
    */

@@ -10,7 +10,7 @@
 - [x] M2 — EPG Core Lib (4 moduli portati as-is in src/lib/epg/, build + test verdi)
 - [x] M3 — EPG Store + Channel Store (channel-store.ts + epg-store.ts su singleton db.ts, build + 17 test verdi)
 - [x] M4 — Ingest Worker + GitHub Actions (src/lib/epg/ingest.ts + scripts/ingest.ts + .github/workflows/ingest.yml, build + 20 test verdi)
-- [ ] M5 — API Route Handlers (palinsesto)
+- [x] M5 — API Route Handlers palinsesto (tonight/schedule/channels/revalidate + lib/api.ts, build + 41 test verdi)
 - [ ] M6 — API Search + Admin
 - [ ] UI-1 — Layout + Home
 - [ ] UI-2 — Pagine Giorno + Canale
@@ -18,21 +18,26 @@
 
 ## Prossima sessione — inizia da qui
 
-**M1–M4 CHIUSI.** Ingest worker pronto: `src/lib/epg/ingest.ts` (`ingest(source, EpgStore,
-ChannelStore, opts)` → stream gunzip/SAX, risolve canali con `buildResolver()`, batch UNNEST,
-irrisolti → `queueUnresolved`; ritorna `IngestStats`), entry point `scripts/ingest.ts`
-(env → ingest → POST /api/revalidate graceful), workflow `.github/workflows/ingest.yml`
-(cron `0 2 * * *` + workflow_dispatch). Build + 20 test verdi.
+**M1–M5 CHIUSI.** API palinsesto pronte: `/api/tonight` (prima serata, usa
+`EpgStore.tonight()` + `tonightWindow`), `/api/schedule?date=&channel=` (giorno intero,
+`EpgStore.schedule(from,to,channel?)`, finestra calendario Europe/Rome via
+`zonedWallTimeToUtc`), `/api/channels` (`ChannelStore.listActiveChannels()`),
+`/api/revalidate` (POST, Bearer `REVALIDATE_TOKEN` con `crypto.timingSafeEqual`).
+Helper condivisi in `src/lib/api.ts` (`isValidDate`, `isSlug`, `romeToday`,
+`serializeProgramme`, costanti cache). L'endpoint `/api/revalidate` ORA ESISTE: il
+revalidate post-ingest non fallirà più (se i secret del workflow sono configurati).
+Build + 41 test verdi.
 
-**AZIONE OPERATIVA per l'utente:** aggiungere su GitHub i secret per il workflow EPG Ingest:
-`XMLTV_URL` (es. `https://iptv-org.github.io/epg/guides/it/epg.xml.gz`), `REVALIDATE_TOKEN`,
+**AZIONE OPERATIVA per l'utente (ancora valida se non già fatta):** aggiungere su GitHub i
+secret per il workflow EPG Ingest: `XMLTV_URL`
+(es. `https://iptv-org.github.io/epg/guides/it/epg.xml.gz`), `REVALIDATE_TOKEN`,
 `NEXT_PUBLIC_SITE_URL` (`DATABASE_URL` già presente da M1). Poi lanciare "EPG Ingest" →
-"Run workflow" per il primo popolamento di `programmes`. NB: l'endpoint `/api/revalidate`
-non esiste ancora (è M5): il revalidate fallirà gracefully con un warning, è atteso.
+"Run workflow" per il primo popolamento di `programmes`.
 
-**Inizia da M5:** esegui `prompts/M5_*` (API Route Handlers palinsesto: `/api/tonight`,
-`/api/schedule`, `/api/channels`, `/api/revalidate`). Usa `EpgStore.tonight()` già pronto.
-Vedi shape response e Cache-Control in `docs/architecture.md`.
+**Inizia da M6:** esegui `prompts/M6_*` (API Search + Admin: `/api/search` full-text
+tsvector, `/api/admin/unresolved` + `/api/admin/approve` protette da `X-Admin-Key`).
+Riusa il pattern M5: validazione input nel route handler, delega allo store, `src/lib/api.ts`
+per helper/serializzazione. `ChannelStore` ha già `listUnresolved`/`approveAlias`.
 
 Nota ambiente: tutto remoto (Vercel + GitHub Actions), NESSUN ambiente locale. Per girare
 script che toccano Neon usa un workflow GitHub Actions, non `.env.local`. I test NON
@@ -42,7 +47,31 @@ per il test ingest è in `src/lib/epg/__fixtures__/guide.xml`.
 ## Ultima sessione
 
 Data: 2026-06-26
-Branch: claude/m4-next-steps-ownnfu (M4).
+Branch: claude/prossimo-task-m5-4n9280 (M5).
+
+Fatto (sessione M5):
+- Creati 4 Route Handlers App Router: `src/app/api/{tonight,schedule,channels,revalidate}/route.ts`.
+  Ogni handler ≤30 righe, zero business logic: valida l'input e delega allo store.
+- `/api/tonight`: `tonightWindow(romeToday(),'Europe/Rome')` → `EpgStore.tonight()` → shape
+  `{date, window:{from,to}, programmes[]}` (vedi docs/architecture.md). Cache fresh.
+- `/api/schedule?date=&channel=`: valida `date` (regex + data reale) e `channel` (slug);
+  malformati → 400 PRIMA di qualsiasi query. Finestra giorno calendario Europe/Rome con
+  `zonedWallTimeToUtc`. Date passate → `Cache-Control: s-maxage=86400, immutable`, altrimenti fresh.
+  Aggiunto `EpgStore.schedule(from,to,channelId?)` (JOIN canale, ORDER BY channel_id,start_at).
+- `/api/channels`: aggiunto `ChannelStore.listActiveChannels()` (is_active, ORDER BY sort_order,
+  alias SQL `logo_url AS "logoUrl"`). Cache fresh.
+- `/api/revalidate` (POST): Bearer token confrontato con `crypto.timingSafeEqual` (guard su
+  lunghezza per non lanciare); assente/errato → 401, token mai loggato/esposto. Revalida
+  `/`, `/[data]`, `/canale/[slug]`.
+- Creato `src/lib/api.ts` (helper condivisi: `isValidDate`, `isSlug`, `romeToday`,
+  `serializeProgramme` row→shape camelCase/ISO, costanti `CACHE_FRESH`/`CACHE_IMMUTABLE`).
+- TDD: scritti prima i test (RED), poi implementazione (GREEN). 18 nuovi test (api.ts +
+  store + 4 route, mock `@/lib/db`/store/`next/cache`). `npm test` 41 verdi.
+- BUILD FIX necessario: le route hanno tirato per la prima volta gli store nel grafo
+  webpack di Next, che NON risolve l'estensione `.js` sugli import interni (tsc/vitest sì).
+  Unico import a runtime rotto: `channel-store.ts` → `./channel-alias.js` (ChannelResolver è
+  una classe). Fix chirurgico: rimossa l'estensione `.js` su quella riga (channel-alias.ts
+  resta INVARIATO; gli altri `.js` sono `import type`, elisi, innocui). `npm run build` verde.
 
 Fatto (sessione M4):
 - Creato `src/lib/epg/ingest.ts`: riscritto da `prototypes/oraintivu_1/ingest.ts` SENZA
