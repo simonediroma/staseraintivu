@@ -9,7 +9,7 @@
 - [x] M1 — Schema DB + Seed Canali (eseguito su Neon via GitHub Actions "DB Migrate", workflow verde)
 - [x] M2 — EPG Core Lib (4 moduli portati as-is in src/lib/epg/, build + test verdi)
 - [x] M3 — EPG Store + Channel Store (channel-store.ts + epg-store.ts su singleton db.ts, build + 17 test verdi)
-- [ ] M4 — Ingest Worker + GitHub Actions
+- [x] M4 — Ingest Worker + GitHub Actions (src/lib/epg/ingest.ts + scripts/ingest.ts + .github/workflows/ingest.yml, build + 20 test verdi)
 - [ ] M5 — API Route Handlers (palinsesto)
 - [ ] M6 — API Search + Admin
 - [ ] UI-1 — Layout + Home
@@ -18,26 +18,48 @@
 
 ## Prossima sessione — inizia da qui
 
-**M1, M2 e M3 CHIUSI.** Store DB pronti in `src/lib/epg/`: `channel-store.ts`
-(`ChannelStore`: buildResolver / queueUnresolved / approveAlias / listUnresolved) e
-`epg-store.ts` (`EpgStore`: upsertProgrammes batch UNNEST idempotente / tonight). Usano il
-singleton `@/lib/db`, nessun `new Pool()`. Build + 17 test verdi.
+**M1–M4 CHIUSI.** Ingest worker pronto: `src/lib/epg/ingest.ts` (`ingest(source, EpgStore,
+ChannelStore, opts)` → stream gunzip/SAX, risolve canali con `buildResolver()`, batch UNNEST,
+irrisolti → `queueUnresolved`; ritorna `IngestStats`), entry point `scripts/ingest.ts`
+(env → ingest → POST /api/revalidate graceful), workflow `.github/workflows/ingest.yml`
+(cron `0 2 * * *` + workflow_dispatch). Build + 20 test verdi.
 
-**Inizia da M4:** esegui `prompts/M4_ingest_worker.md` (ingest worker + GitHub Actions cron).
-Riscrivi la logica ingest dal prototipo `prototypes/oraintivu/ingest.ts` (e `oraintivu_1/ingest.ts`)
-SENZA importarlo: usa `parseXmltv` (parse-xmltv), `ChannelStore.buildResolver()` per risolvere i
-canali (gestisci sempre entrambi i branch resolved/unresolved → `queueUnresolved` sui fuzzy),
-`EpgStore.upsertProgrammes()` per scrivere. Entry point `scripts/ingest.ts`, poi
-`.github/workflows/ingest.yml` (cron 02:00 UTC, vedi docs/architecture.md).
+**AZIONE OPERATIVA per l'utente:** aggiungere su GitHub i secret per il workflow EPG Ingest:
+`XMLTV_URL` (es. `https://iptv-org.github.io/epg/guides/it/epg.xml.gz`), `REVALIDATE_TOKEN`,
+`NEXT_PUBLIC_SITE_URL` (`DATABASE_URL` già presente da M1). Poi lanciare "EPG Ingest" →
+"Run workflow" per il primo popolamento di `programmes`. NB: l'endpoint `/api/revalidate`
+non esiste ancora (è M5): il revalidate fallirà gracefully con un warning, è atteso.
+
+**Inizia da M5:** esegui `prompts/M5_*` (API Route Handlers palinsesto: `/api/tonight`,
+`/api/schedule`, `/api/channels`, `/api/revalidate`). Usa `EpgStore.tonight()` già pronto.
+Vedi shape response e Cache-Control in `docs/architecture.md`.
 
 Nota ambiente: tutto remoto (Vercel + GitHub Actions), NESSUN ambiente locale. Per girare
-script che toccano Neon usa un workflow GitHub Actions, non `.env.local`. I test store NON
-toccano il DB: mockano `@/lib/db` (vedi `vitest.config.ts`, alias `@/*`).
+script che toccano Neon usa un workflow GitHub Actions, non `.env.local`. I test NON
+toccano il DB: mockano `@/lib/db` (vedi `vitest.config.ts`, alias `@/*`). La fixture XMLTV
+per il test ingest è in `src/lib/epg/__fixtures__/guide.xml`.
 
 ## Ultima sessione
 
 Data: 2026-06-26
-Branch: claude/next-steps-1fsc2l (M3).
+Branch: claude/m4-next-steps-ownnfu (M4).
+
+Fatto (sessione M4):
+- Creato `src/lib/epg/ingest.ts`: riscritto da `prototypes/oraintivu_1/ingest.ts` SENZA
+  importarlo, adattato alla nuova API store (rimossi `init`/`seedIfEmpty`/`close` che non
+  esistono più — schema+seed sono di M1, il pool è singleton condiviso). Streaming
+  gunzip→SAX (no DOM in memoria), batch UNNEST da 500, fetch con `AbortSignal.timeout(60s)`.
+  Gestisce entrambi i branch resolved/unresolved (fuzzy → `queueUnresolved`, mai auto-match).
+- Creato `scripts/ingest.ts` (orchestrazione: env → `ingest()` → `POST /api/revalidate`
+  con Bearer `REVALIDATE_TOKEN`, fallisce gracefully con warning se il sito non risponde;
+  `pool.end()` a fine run). Nessuna logica di parsing/DB nel CLI.
+- Creato `.github/workflows/ingest.yml` (cron `0 2 * * *` + workflow_dispatch, stile uguale
+  a migrate.yml, secret da GitHub Actions).
+- TDD: scritto prima `src/lib/epg/ingest.test.ts` (RED), poi il modulo (GREEN). 3 test
+  che mockano `@/lib/db` e guidano l'ingest con fixture `__fixtures__/guide.xml`: canali
+  noti risolti + ≥1 upsert / idempotenza batch / canale non canonico → `unresolved_channels`.
+- `npm test` 20 verdi, `npm run build` verde. Nota: `node_modules` non era presente nel
+  container effimero → `npm ci` prima di test/build.
 
 Fatto (sessione M3):
 - Creati `src/lib/epg/channel-store.ts` e `src/lib/epg/epg-store.ts`: riscritti dai prototipi
