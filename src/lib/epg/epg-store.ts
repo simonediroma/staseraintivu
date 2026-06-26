@@ -1,6 +1,12 @@
 import pool from '@/lib/db';
 import type { ProgrammeRecord } from './parse-xmltv.js';
 
+/** Serializza un array JS in letterale array PostgreSQL: {\"a\",\"b\"} */
+function pgArrayLiteral(arr: string[]): string {
+  if (arr.length === 0) return '{}';
+  return '{' + arr.map((s) => '"' + s.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"').join(',') + '}';
+}
+
 /**
  * Accesso DB ai programmi. Usa il singleton `@/lib/db` — nessun Pool proprio.
  * Schema e indici sono di competenza di M1 (scripts/migrate.ts): qui solo query.
@@ -15,13 +21,18 @@ export class EpgStore {
    */
   async upsertProgrammes(batch: ProgrammeRecord[]): Promise<void> {
     if (batch.length === 0) return;
+    // categories è text[] per riga. UNNEST parallelo appiattisce text[][] → text,
+    // quindi passiamo ogni array come letterale PostgreSQL (es. '{"news","film"}')
+    // e lo castiamo a text[] nella SELECT.
     await pool.query(
       `INSERT INTO programmes
          (channel_id, start_at, stop_at, title, sub_title, descr, categories, icon_url, episode_num)
-       SELECT * FROM UNNEST(
+       SELECT channel_id, start_at, stop_at, title, sub_title, descr,
+              categories::text[], icon_url, episode_num
+       FROM UNNEST(
          $1::text[], $2::timestamptz[], $3::timestamptz[], $4::text[],
-         $5::text[], $6::text[], $7::text[][], $8::text[], $9::text[]
-       )
+         $5::text[], $6::text[], $7::text[], $8::text[], $9::text[]
+       ) AS t(channel_id, start_at, stop_at, title, sub_title, descr, categories, icon_url, episode_num)
        ON CONFLICT (channel_id, start_at) DO UPDATE
          SET stop_at     = EXCLUDED.stop_at,
              title       = EXCLUDED.title,
@@ -37,7 +48,7 @@ export class EpgStore {
         batch.map((p) => p.title),
         batch.map((p) => p.subTitle),
         batch.map((p) => p.desc),
-        batch.map((p) => p.categories),
+        batch.map((p) => pgArrayLiteral(p.categories)),
         batch.map((p) => p.iconUrl),
         batch.map((p) => p.episodeNum),
       ]
