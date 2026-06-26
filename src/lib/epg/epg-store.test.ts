@@ -56,3 +56,24 @@ describe('EpgStore.upsertProgrammes', () => {
     expect(query.mock.calls[0][0]).toMatch(/ON CONFLICT \(channel_id, start_at\) DO UPDATE/i);
   });
 });
+
+describe('EpgStore.schedule', () => {
+  const from = new Date('2026-06-25T00:00:00Z');
+  const to = new Date('2026-06-26T00:00:00Z');
+
+  it('senza canale: JOIN canale + finestra giorno, ORDER BY (channel_id, start_at)', async () => {
+    await (new EpgStore()).schedule(from, to);
+    expect(query).toHaveBeenCalledTimes(1);
+    const [sql, params] = query.mock.calls[0];
+    expect(sql).toMatch(/JOIN canonical_channels/i);
+    expect(sql).toMatch(/ORDER BY p\.channel_id, p\.start_at/i);
+    expect(params).toEqual([from.toISOString(), to.toISOString()]);
+  });
+
+  it('con canale: aggiunge il filtro channel_id come parametro', async () => {
+    await (new EpgStore()).schedule(from, to, 'rai-1');
+    const [sql, params] = query.mock.calls[0];
+    expect(sql).toMatch(/p\.channel_id = \$3/);
+    expect(params).toEqual([from.toISOString(), to.toISOString(), 'rai-1']);
+  });
+});

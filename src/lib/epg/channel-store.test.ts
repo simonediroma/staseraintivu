@@ -54,6 +54,18 @@ describe('ChannelStore.buildResolver → resolve', () => {
   });
 });
 
+describe('ChannelStore.listActiveChannels', () => {
+  it('seleziona solo i canali attivi, ordinati per sort_order, in camelCase', async () => {
+    await (new ChannelStore()).listActiveChannels();
+    expect(query).toHaveBeenCalledTimes(1);
+    const [sql] = query.mock.calls[0];
+    expect(sql).toMatch(/FROM canonical_channels/i);
+    expect(sql).toMatch(/is_active = true/i);
+    expect(sql).toMatch(/ORDER BY sort_order/i);
+    expect(sql).toMatch(/logo_url AS "logoUrl"/i);
+  });
+});
+
 describe('ChannelStore.queueUnresolved', () => {
   it('fa UPSERT (ON CONFLICT) con suggestions serializzate in JSON', async () => {
     await (new ChannelStore()).queueUnresolved('iptv-org', 'xyz', 'Tele XYZ', [
