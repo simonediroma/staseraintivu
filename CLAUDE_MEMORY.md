@@ -18,31 +18,44 @@
 
 ## Prossima sessione — inizia da qui
 
-Esegui `prompts/M1_schema_db_seed.md`: schema DB (4 tabelle) + seed canali canonici.
-Prima serve `DATABASE_URL` (Neon) in `.env.local` — vedi sezione variabili sotto.
-M2-M4 ora sbloccate: i prototipi EPG sono in `prototypes/` (vedi sotto).
+Esegui `prompts/M1_schema_db_seed.md`: schema DB (4 tabelle) + seed ~25 canali canonici.
+Infra PRONTA: Neon creato, env vars configurate su Vercel, deploy verde.
+Unico prerequisito per eseguire M1 in locale: crea `.env.local` con il `DATABASE_URL`
+(connection string **pooled** di Neon) — vedi sezione variabili sotto. Lo script
+`scripts/migrate.ts` gira in locale, quindi gli serve il DATABASE_URL nel `.env.local`
+(la copia su Vercel non è accessibile dall'esecuzione locale).
+M2-M4 sbloccate: i prototipi EPG sono in `prototypes/` (vedi sotto).
 
 ## Ultima sessione
 
 Data: 2026-06-26
 Branch: claude/next-steps-foq304
-PR corrente: claude/next-steps-foq304 → main (fix deploy Vercel)
+PR corrente: PR #2 (fix deploy Vercel) → **MERGIATA** su main (`c73f7a1`).
 
-Fatto: fix del deploy Vercel rotto. Il commit `a09ebcd` su main aveva aggiunto i
-prototipi `oraintivu/` e `oraintivu_1/` nella root: `next build` li type-checkava e
-falliva. Spostati in `prototypes/` ed esclusi dal build (`tsconfig.json` exclude).
-Build verde in locale.
-Da sapere: i prototipi EPG core ora ESISTONO nel repo sotto `prototypes/oraintivu*`
-— sbloccano M2-M4 (porting verso `src/lib/epg/`). NON importarli in `src/`, sono
-solo riferimento (vedi `prototypes/README.md`).
+Fatto:
+- Fix del deploy Vercel rotto. Il commit `a09ebcd` su main aveva aggiunto i prototipi
+  `oraintivu/` e `oraintivu_1/` nella root: `next build` li type-checkava e falliva.
+  Spostati in `prototypes/` ed esclusi dal build (`tsconfig.json` exclude). Build verde.
+  → PR #2 mergiata su main.
+- Infra completata dall'utente: **database Neon creato**, **env vars configurate su
+  Vercel** (DATABASE_URL, REVALIDATE_TOKEN, ADMIN_KEY, XMLTV_*, NEXT_PUBLIC_SITE_URL).
 
-## Variabili d'ambiente da configurare
+Da sapere:
+- I prototipi EPG core ESISTONO nel repo sotto `prototypes/oraintivu*` — sbloccano M2-M4
+  (porting verso `src/lib/epg/`). NON importarli in `src/`, sono solo riferimento
+  (vedi `prototypes/README.md`).
+- Restano da scrivere per M1: `scripts/migrate.ts`, `src/db/schema.sql`,
+  `src/db/seed-channels.ts` (cartelle `scripts/` e `src/db/` non ancora esistenti).
+- `tsx` NON è ancora in devDependencies: M1 usa `npx tsx scripts/migrate.ts` (vedi prompt).
 
-Prima di M1, crea `.env.local` con:
+## Variabili d'ambiente
+
+Già configurate su **Vercel** (Production/Preview/Development). Per girare M1/ingest **in
+locale** ricrea `.env.local` (è gitignored, non sopravvive tra sessioni effimere):
 ```
-DATABASE_URL=postgresql://...  ← ottieni da dashboard Neon
-REVALIDATE_TOKEN=              ← genera con: openssl rand -hex 32
-ADMIN_KEY=                     ← scegli una stringa lunga
+DATABASE_URL=postgresql://...-pooler...neon.tech/neondb?sslmode=require  ← pooled, da Neon
+REVALIDATE_TOKEN=              ← stesso valore messo su Vercel (o rigenera: openssl rand -hex 32)
+ADMIN_KEY=                     ← stesso valore messo su Vercel
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 XMLTV_URL=https://iptv-org.github.io/epg/guides/it/epg.xml.gz
 XMLTV_SOURCE=iptv-org
