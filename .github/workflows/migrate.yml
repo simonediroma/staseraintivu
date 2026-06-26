@@ -1,0 +1,20 @@
+name: DB Migrate
+
+# Avvio manuale: tab Actions → "DB Migrate" → "Run workflow".
+# Esegue lo schema (IF NOT EXISTS) + seed canali (ON CONFLICT DO NOTHING).
+# Idempotente: rilanciarlo è sicuro.
+on:
+  workflow_dispatch:
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npx --yes tsx scripts/migrate.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
