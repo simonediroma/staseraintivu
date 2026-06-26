@@ -124,3 +124,4 @@ Modifiche manuali su quella scala sono error-prone e difficili da revieware.
 - **`tsx`** per eseguire lo script ingest TypeScript direttamente, senza compilazione.
 - **`tsvector` GENERATED** per la ricerca, non un servizio esterno. Sufficiente per v1.
 - **Autenticazione admin con header `X-Admin-Key`**, non OAuth. Sito personale/esperimento, non vale la complessità di un flow OAuth.
+- **`CLAUDE_MEMORY.md` è versionato (committato e pushato), NON gitignored.** Il progetto si sviluppa con Claude Code web: il container è effimero e il repo viene clonato da zero a ogni sessione. La memoria di sessione deve stare nel repo remoto per sopravvivere — se fosse gitignored andrebbe persa. Aggiornarlo a fine sessione e pushare sul branch corrente.

@@ -5,7 +5,7 @@
 ## ⚡ ISTRUZIONI OPERATIVE — LEGGERE SEMPRE
 
 1. **Inizio sessione:** leggi `@CLAUDE_MEMORY.md`. Quella è la tua partenza.
-2. **Fine sessione:** aggiorna `CLAUDE_MEMORY.md` (gitignored):
+2. **Fine sessione:** aggiorna `CLAUDE_MEMORY.md` (versionato — committalo e pushalo, è la memoria che persiste tra sessioni Claude Code web):
    - Marca i task completati con `[x]`
    - Aggiorna `Ultima sessione` con la data odierna
    - Scrivi `Prossima sessione — inizia da qui` in modo actionable
