@@ -14,9 +14,14 @@
 - [x] M6 — API Search + Admin (search + admin/unresolved + admin/approve, build + 70 test verdi)
 - [x] UI-1 — Layout + Home
 - [x] UI-2 — Pagine Giorno + Canale (build + 70 test verdi)
-- [ ] UI-3 — Ricerca + Admin Panel
+- [x] UI-3 — Ricerca + Admin Panel (build + 70 test verdi)
 
 ## Prossima sessione — inizia da qui
+
+**UI-3 CHIUSA. Tutte le macros completate.** Verifica deploy su Vercel (branch merge su main),
+controlla che il workflow EPG Ingest sia stato eseguito con i secret GitHub corretti,
+e testa manualmente le pagine: `/` (home stasera), `/[data]` (palinsesto giorno),
+`/canale/[slug]` (timeline canale), `/cerca` (ricerca), `/admin` (pannello admin).
 
 **UI-2 CHIUSA. Inizia da UI-3:** esegui `prompts/UI-3_ricerca_admin.md`.
 Sono pronte: `/[data]` (palinsesto giorno, ISR 1h, generateStaticParams ieri+oggi+5 avanti,
@@ -54,7 +59,7 @@ per il test ingest è in `src/lib/epg/__fixtures__/guide.xml`.
 ## Ultima sessione
 
 Data: 2026-06-26
-Branch: claude/prossimo-task-u2-hjzn7h (UI-2).
+Branch: claude/prossimo-task-u3-jfacvg (UI-3).
 
 Fatto (sessione M6):
 - Creati 3 Route Handlers: `src/app/api/search/route.ts`,
