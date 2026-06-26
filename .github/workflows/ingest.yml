@@ -1,8 +1,8 @@
 name: EPG Ingest
 
 # Cron notturno (02:00 UTC = 03:00/04:00 Europe/Rome) + avvio manuale.
-# Scarica il feed XMLTV, fa upsert dei programmi e invalida l'ISR di Vercel.
-# Idempotente: rilanciarlo è sicuro.
+# Genera il feed XMLTV via iptv-org/epg (guidatv.sky.it), fa upsert dei programmi
+# e invalida l'ISR di Vercel. Idempotente: rilanciarlo è sicuro.
 on:
   schedule:
     - cron: '0 2 * * *'
@@ -12,16 +12,39 @@ jobs:
   ingest:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout staseraintivu
+        uses: actions/checkout@v4
+        with:
+          path: staseraintivu
+
+      - name: Checkout iptv-org/epg (grabber)
+        uses: actions/checkout@v4
+        with:
+          repository: iptv-org/epg
+          path: epg
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm ci
-      - run: npx --yes tsx scripts/ingest.ts
+
+      - name: Installa dipendenze grabber
+        run: npm ci
+        working-directory: epg
+
+      - name: Genera guide XMLTV (guidatv.sky.it)
+        run: npm run grab -- --sites=guidatv.sky.it --output=../guide.xml
+        working-directory: epg
+
+      - name: Installa dipendenze staseraintivu
+        run: npm ci
+        working-directory: staseraintivu
+
+      - name: Ingest nel DB + revalidate ISR
+        run: npx --yes tsx scripts/ingest.ts ../guide.xml
+        working-directory: staseraintivu
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          XMLTV_URL: ${{ secrets.XMLTV_URL }}
-          XMLTV_SOURCE: iptv-org
-          XMLTV_OFFSET_MINUTES: '120'
+          XMLTV_SOURCE: guidatv.sky.it
+          XMLTV_OFFSET_MINUTES: '0'
           REVALIDATE_TOKEN: ${{ secrets.REVALIDATE_TOKEN }}
           NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
