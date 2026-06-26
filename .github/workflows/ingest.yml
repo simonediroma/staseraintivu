@@ -1,0 +1,27 @@
+name: EPG Ingest
+
+# Cron notturno (02:00 UTC = 03:00/04:00 Europe/Rome) + avvio manuale.
+# Scarica il feed XMLTV, fa upsert dei programmi e invalida l'ISR di Vercel.
+# Idempotente: rilanciarlo è sicuro.
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npx --yes tsx scripts/ingest.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          XMLTV_URL: ${{ secrets.XMLTV_URL }}
+          XMLTV_SOURCE: iptv-org
+          XMLTV_OFFSET_MINUTES: '120'
+          REVALIDATE_TOKEN: ${{ secrets.REVALIDATE_TOKEN }}
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
