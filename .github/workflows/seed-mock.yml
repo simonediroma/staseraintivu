@@ -1,0 +1,20 @@
+name: Seed Mock
+
+# Avvio manuale: tab Actions → "Seed Mock" → "Run workflow".
+# Inserisce programmi MOCK di prima serata (solo per sviluppo/test).
+# Idempotente: ON CONFLICT DO UPDATE. Richiede tabelle gia create (DB Migrate).
+on:
+  workflow_dispatch:
+
+jobs:
+  seed-mock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npx --yes tsx scripts/seed-mock.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
