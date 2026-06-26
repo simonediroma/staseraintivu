@@ -6,8 +6,8 @@
 
 **Avanzamento macros:**
 - [x] M0 — Scaffold Next.js 15
-- [~] M1 — Schema DB + Seed Canali (codice fatto + build/test verdi; manca SOLO eseguire `npx tsx scripts/migrate.ts` su Neon in locale)
-- [ ] M2 — EPG Core Lib (porta da oraintivu)
+- [x] M1 — Schema DB + Seed Canali (eseguito su Neon via GitHub Actions "DB Migrate", workflow verde)
+- [x] M2 — EPG Core Lib (4 moduli portati as-is in src/lib/epg/, build + test verdi)
 - [ ] M3 — EPG Store + Channel Store
 - [ ] M4 — Ingest Worker + GitHub Actions
 - [ ] M5 — API Route Handlers (palinsesto)
@@ -18,32 +18,42 @@
 
 ## Prossima sessione — inizia da qui
 
-**Prima cosa (chiude M1):** crea `.env.local` con `DATABASE_URL` pooled di Neon (vedi
-sezione variabili sotto) ed esegui `npx tsx scripts/migrate.ts` in locale. Verifica su
-Neon che esistano le 4 tabelle, i 3 indici e i 25 canali in `canonical_channels`. Rieseguilo
-una seconda volta per confermare l'idempotenza (non deve fallire). Poi marca M1 come `[x]`.
+**M1 e M2 CHIUSI.** Schema + 25 canali su Neon (workflow "DB Migrate" verde). I 4 moduli
+EPG core sono in `src/lib/epg/` (datetime, parse-xmltv, prime-time, channel-alias) —
+portati as-is, INVARIATI per policy (vedi CLAUDE.md). Build + test verdi (10 test).
 
-Il codice di M1 è già scritto e pushato (`src/db/schema.sql`, `src/db/seed-channels.ts`,
-`scripts/migrate.ts`, test in `src/db/seed-channels.test.ts`). Build e test verdi.
-L'esecuzione su Neon NON è stata fatta dal container web (effimero, niente accesso a Neon).
+**Inizia da M3:** esegui `prompts/M3_epg_store_channel_store.md` (riscrivi `channel-store.ts`
+e `epg-store.ts` per usare il singleton `src/lib/db.ts`; riferimento i prototipi
+`prototypes/oraintivu/channel-store.ts` e gli `ingest.ts`, ma NON importarli — vanno
+riscritti). Poi M4 (ingest worker).
 
-**Poi:** esegui `prompts/M2_epg_core_lib.md` (porta i moduli EPG core da `prototypes/` a
-`src/lib/epg/`). M2-M4 sbloccate: i prototipi EPG sono in `prototypes/` (vedi sotto).
+Nota ambiente: tutto remoto (Vercel + GitHub Actions), NESSUN ambiente locale. Per girare
+script che toccano Neon usa il workflow GitHub Actions "DB Migrate", non `.env.local`.
 
 ## Ultima sessione
 
 Data: 2026-06-26
-Branch: claude/next-steps-54ywii
-PR corrente: nessuna ancora aperta per questo branch (M1 codice pushato sul branch).
+Branch: claude/m2-epg-core-lib (M1 era su claude/next-steps-54ywii → PR #5 MERGIATA su main).
+
+Fatto (sessione M2):
+- Portati as-is in `src/lib/epg/`: `datetime.ts`, `parse-xmltv.ts`, `prime-time.ts`
+  (da `prototypes/oraintivu_1/`), `channel-alias.ts` (da `prototypes/oraintivu/`).
+  Diff puro: identici agli originali, nessuna modifica di logica.
+- Gli import interni usano estensione `.js` (`./datetime.js`, `./parse-xmltv.js`): si
+  risolvono correttamente con `moduleResolution: bundler`, build verde senza modifiche.
+- `sax` + `@types/sax` già in package.json (richiesti da parse-xmltv).
+- Aggiunto smoke test `src/lib/epg/prime-time.test.ts` (tonightWindow → {from,to} validi).
+  NB: la firma reale è `tonightWindow(localDate: string, tz)`, non `Date` come nel prompt.
+- `npm run build` verde, `npm test` verde (10 test totali).
 
 Fatto (sessione M1):
 - Creati `src/db/schema.sql` (4 tabelle + 3 indici, tutto `IF NOT EXISTS`),
   `src/db/seed-channels.ts` (25 canali DTT, sort_order = lcn — dati dal prototipo),
   `scripts/migrate.ts` (schema + seed `ON CONFLICT DO NOTHING`, in transazione, idempotente).
+- Aggiunto workflow `.github/workflows/migrate.yml` (workflow_dispatch) per eseguire la
+  migration in cloud — l'utente ha aggiunto il secret `DATABASE_URL` su GitHub. Run verde.
 - Test `src/db/seed-channels.test.ts` (8 test, verdi): integrità seed + idempotenza schema.
-- `npm run build` verde (type-check incluso). `npx tsx scripts/migrate.ts` carica e parsa
-  correttamente (fallisce solo alla connessione DB, atteso senza DATABASE_URL).
-- RESTA da fare: eseguire la migration su Neon in locale (vedi "Prossima sessione").
+- PR #5 mergiata su main.
 
 Fatto (sessioni precedenti):
 - Fix del deploy Vercel rotto. Il commit `a09ebcd` su main aveva aggiunto i prototipi
