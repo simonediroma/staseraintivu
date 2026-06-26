@@ -8,7 +8,7 @@
 - [x] M0 — Scaffold Next.js 15
 - [x] M1 — Schema DB + Seed Canali (eseguito su Neon via GitHub Actions "DB Migrate", workflow verde)
 - [x] M2 — EPG Core Lib (4 moduli portati as-is in src/lib/epg/, build + test verdi)
-- [ ] M3 — EPG Store + Channel Store
+- [x] M3 — EPG Store + Channel Store (channel-store.ts + epg-store.ts su singleton db.ts, build + 17 test verdi)
 - [ ] M4 — Ingest Worker + GitHub Actions
 - [ ] M5 — API Route Handlers (palinsesto)
 - [ ] M6 — API Search + Admin
@@ -18,22 +18,40 @@
 
 ## Prossima sessione — inizia da qui
 
-**M1 e M2 CHIUSI.** Schema + 25 canali su Neon (workflow "DB Migrate" verde). I 4 moduli
-EPG core sono in `src/lib/epg/` (datetime, parse-xmltv, prime-time, channel-alias) —
-portati as-is, INVARIATI per policy (vedi CLAUDE.md). Build + test verdi (10 test).
+**M1, M2 e M3 CHIUSI.** Store DB pronti in `src/lib/epg/`: `channel-store.ts`
+(`ChannelStore`: buildResolver / queueUnresolved / approveAlias / listUnresolved) e
+`epg-store.ts` (`EpgStore`: upsertProgrammes batch UNNEST idempotente / tonight). Usano il
+singleton `@/lib/db`, nessun `new Pool()`. Build + 17 test verdi.
 
-**Inizia da M3:** esegui `prompts/M3_epg_store_channel_store.md` (riscrivi `channel-store.ts`
-e `epg-store.ts` per usare il singleton `src/lib/db.ts`; riferimento i prototipi
-`prototypes/oraintivu/channel-store.ts` e gli `ingest.ts`, ma NON importarli — vanno
-riscritti). Poi M4 (ingest worker).
+**Inizia da M4:** esegui `prompts/M4_ingest_worker.md` (ingest worker + GitHub Actions cron).
+Riscrivi la logica ingest dal prototipo `prototypes/oraintivu/ingest.ts` (e `oraintivu_1/ingest.ts`)
+SENZA importarlo: usa `parseXmltv` (parse-xmltv), `ChannelStore.buildResolver()` per risolvere i
+canali (gestisci sempre entrambi i branch resolved/unresolved → `queueUnresolved` sui fuzzy),
+`EpgStore.upsertProgrammes()` per scrivere. Entry point `scripts/ingest.ts`, poi
+`.github/workflows/ingest.yml` (cron 02:00 UTC, vedi docs/architecture.md).
 
 Nota ambiente: tutto remoto (Vercel + GitHub Actions), NESSUN ambiente locale. Per girare
-script che toccano Neon usa il workflow GitHub Actions "DB Migrate", non `.env.local`.
+script che toccano Neon usa un workflow GitHub Actions, non `.env.local`. I test store NON
+toccano il DB: mockano `@/lib/db` (vedi `vitest.config.ts`, alias `@/*`).
 
 ## Ultima sessione
 
 Data: 2026-06-26
-Branch: claude/m2-epg-core-lib (M1 era su claude/next-steps-54ywii → PR #5 MERGIATA su main).
+Branch: claude/next-steps-1fsc2l (M3).
+
+Fatto (sessione M3):
+- Creati `src/lib/epg/channel-store.ts` e `src/lib/epg/epg-store.ts`: riscritti dai prototipi
+  `prototypes/oraintivu/{channel-store,db}.ts` ma su singleton `@/lib/db` (zero `new Pool()`).
+- Rimossi dagli store DDL/seed/`close()`: schema+seed sono di M1 (scripts/migrate.ts), il pool
+  è condiviso (chiuderlo romperebbe gli altri moduli). Scelta chirurgica.
+- `ChannelStore`: buildResolver (carica canonical_channels + channel_aliases → ChannelResolver),
+  queueUnresolved, approveAlias (transazione), listUnresolved. La risoluzione a 3 livelli resta
+  in `channel-alias.ts` (INVARIATO) — gli store non la reimplementano.
+- `EpgStore`: upsertProgrammes (UNNEST batch + ON CONFLICT (channel_id,start_at) DO UPDATE,
+  idempotente; `search_vec` GENERATED esclusa), tonight (DISTINCT ON).
+- TDD: scritti prima i test (RED), poi i moduli (GREEN). 7 nuovi test (4 channel + 3 epg) che
+  mockano `@/lib/db` — nessuna connessione reale. Aggiunto `vitest.config.ts` per l'alias `@/*`
+  (vitest non legge i paths di tsconfig). `npm test` 17 verdi, `npm run build` verde.
 
 Fatto (sessione M2):
 - Portati as-is in `src/lib/epg/`: `datetime.ts`, `parse-xmltv.ts`, `prime-time.ts`
