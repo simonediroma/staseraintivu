@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tv generator-info-name="staseraintv-test">
+  <channel id="Rai1.it">
+    <display-name lang="it">Rai 1</display-name>
+    <icon src="https://example.com/rai1.png"/>
+  </channel>
+  <channel id="Canale5.it">
+    <display-name lang="it">Canale 5</display-name>
+    <icon src="https://example.com/canale5.png"/>
+  </channel>
+  <channel id="La7.it">
+    <display-name lang="it">La7</display-name>
+  </channel>
+
+  <programme start="20260614183000 +0200" stop="20260614200000 +0200" channel="Rai1.it">
+    <title lang="it">L'Eredità</title>
+    <desc lang="it">Game show del preserale condotto in studio.</desc>
+    <category lang="it">Intrattenimento</category>
+  </programme>
+  <programme start="20260614200000 +0200" stop="20260614210000 +0200" channel="Rai1.it">
+    <title lang="it">Tg1</title>
+    <category lang="it">Notiziario</category>
+  </programme>
+  <programme start="20260614213000 +0200" stop="20260614233000 +0200" channel="Rai1.it">
+    <title lang="it">Il Commissario Montalbano</title>
+    <sub-title lang="it">La forma dell'acqua</sub-title>
+    <desc lang="it">Fiction. Montalbano indaga su una morte sospetta.</desc>
+    <category lang="it">Film</category>
+    <category lang="it">Giallo</category>
+    <icon src="https://example.com/montalbano.png"/>
+    <episode-num system="xmltv_ns">2.4.0/1</episode-num>
+  </programme>
+
+  <programme start="20260614210000 +0200" stop="20260614233000 +0200" channel="Canale5.it">
+    <title lang="it">Lo Show dei Record</title>
+    <desc lang="it">Varietà con record da tutto il mondo.</desc>
+    <category lang="it">Intrattenimento</category>
+  </programme>
+
+  <programme start="20260614203500 +0200" stop="20260615000000 +0200" channel="La7.it">
+    <title lang="it">In Onda</title>
+    <desc lang="it">Approfondimento di attualità e politica.</desc>
+    <category lang="it">Informazione</category>
+  </programme>
+</tv>
