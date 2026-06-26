@@ -77,3 +77,44 @@ describe('EpgStore.schedule', () => {
     expect(params).toEqual([from.toISOString(), to.toISOString(), 'rai-1']);
   });
 });
+
+describe('EpgStore.search', () => {
+  beforeEach(() => {
+    // search emette due query: risultati poi COUNT(*).
+    query.mockImplementation((sql: string) => {
+      if (/count/i.test(sql)) return Promise.resolve({ rows: [{ total: '3' }] });
+      return Promise.resolve({ rows: [] });
+    });
+  });
+
+  it('usa websearch_to_tsquery parametrizzato (no injection) e ts_rank', async () => {
+    await (new EpgStore()).search('totò', 20, 0);
+    const [sql, params] = query.mock.calls[0];
+    expect(sql).toMatch(/websearch_to_tsquery\('italian', \$1\)/i);
+    expect(sql).toMatch(/ts_rank/i);
+    expect(sql).not.toMatch(/to_tsquery\('italian', 'totò'\)/i); // mai interpolato
+    expect(params[0]).toBe('totò');
+  });
+
+  it('LIMIT/OFFSET parametrizzati e applicati prima del JOIN (subquery)', async () => {
+    await (new EpgStore()).search('film', 10, 20);
+    const [sql, params] = query.mock.calls[0];
+    expect(sql).toMatch(/LIMIT \$2 OFFSET \$3/i);
+    // il LIMIT è dentro la subquery su programmes, prima del JOIN canonical_channels
+    expect(sql.indexOf('LIMIT')).toBeLessThan(sql.indexOf('JOIN canonical_channels'));
+    expect(params).toEqual(['film', 10, 20]);
+  });
+
+  it('restituisce { rows, total } con total numerico', async () => {
+    const out = await (new EpgStore()).search('film', 20, 0);
+    expect(out.total).toBe(3);
+    expect(Array.isArray(out.rows)).toBe(true);
+  });
+
+  it('input SQL-injection → query parametrizzata, nessun errore', async () => {
+    const out = await (new EpgStore()).search("'; DROP TABLE programmes;--", 20, 0);
+    const [, params] = query.mock.calls[0];
+    expect(params[0]).toBe("'; DROP TABLE programmes;--");
+    expect(out.rows).toEqual([]);
+  });
+});

@@ -68,6 +68,37 @@ export class EpgStore {
   }
 
   /**
+   * Ricerca full-text. `websearch_to_tsquery` accetta input utente grezzo senza
+   * crashare (input parametrizzato → nessuna SQL injection possibile). Risultati
+   * ordinati per rilevanza (`ts_rank`). LIMIT/OFFSET applicati nella subquery su
+   * `programmes` PRIMA del JOIN col canale. `total` è il conteggio complessivo dei
+   * match (per la paginazione), calcolato in una seconda query leggera.
+   */
+  async search(q: string, limit: number, offset: number) {
+    const results = await pool.query(
+      `SELECT p.channel_id, c.name AS channel_name,
+              p.start_at, p.stop_at, p.title, p.descr, p.categories
+       FROM (
+         SELECT channel_id, start_at, stop_at, title, descr, categories,
+                ts_rank(search_vec, websearch_to_tsquery('italian', $1)) AS rank
+         FROM programmes
+         WHERE search_vec @@ websearch_to_tsquery('italian', $1)
+         ORDER BY rank DESC, start_at DESC
+         LIMIT $2 OFFSET $3
+       ) p
+       JOIN canonical_channels c ON c.id = p.channel_id
+       ORDER BY p.rank DESC, p.start_at DESC`,
+      [q, limit, offset]
+    );
+    const count = await pool.query<{ total: string }>(
+      `SELECT count(*) AS total FROM programmes
+       WHERE search_vec @@ websearch_to_tsquery('italian', $1)`,
+      [q]
+    );
+    return { rows: results.rows, total: Number(count.rows[0].total) };
+  }
+
+  /**
    * "Stasera in TV": per ogni canale il primo programma nella finestra.
    * DISTINCT ON è il modo idiomatico in Postgres per il "primo per gruppo".
    */

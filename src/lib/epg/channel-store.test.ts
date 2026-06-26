@@ -66,6 +66,23 @@ describe('ChannelStore.listActiveChannels', () => {
   });
 });
 
+describe('ChannelStore.channelExists', () => {
+  it('canonicalId presente → true', async () => {
+    query.mockResolvedValueOnce({ rows: [{ exists: true }] });
+    const ok = await (new ChannelStore()).channelExists('rai-1');
+    expect(ok).toBe(true);
+    const [sql, params] = query.mock.calls[0];
+    expect(sql).toMatch(/FROM canonical_channels/i);
+    expect(params).toEqual(['rai-1']);
+  });
+
+  it('canonicalId assente → false', async () => {
+    query.mockResolvedValueOnce({ rows: [] });
+    const ok = await (new ChannelStore()).channelExists('non-esiste');
+    expect(ok).toBe(false);
+  });
+});
+
 describe('ChannelStore.queueUnresolved', () => {
   it('fa UPSERT (ON CONFLICT) con suggestions serializzate in JSON', async () => {
     await (new ChannelStore()).queueUnresolved('iptv-org', 'xyz', 'Tele XYZ', [
