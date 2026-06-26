@@ -20,16 +20,21 @@
 
 Esegui `prompts/M1_schema_db_seed.md`: schema DB (4 tabelle) + seed canali canonici.
 Prima serve `DATABASE_URL` (Neon) in `.env.local` — vedi sezione variabili sotto.
+M2-M4 ora sbloccate: i prototipi EPG sono in `prototypes/` (vedi sotto).
 
 ## Ultima sessione
 
 Data: 2026-06-26
-Branch: claude/repo-analysis-xm6zu2
-PR corrente: — (branch pushato, nessuna PR aperta)
+Branch: claude/next-steps-foq304
+PR corrente: claude/next-steps-foq304 → main (fix deploy Vercel)
 
-Fatto: M0 scaffold. Build e dev server verdi su localhost:3000.
-Da sapere: le cartelle prototipo `../oraintivu` e `../oraintivu_1` NON esistono
-nell'ambiente — bloccano M2-M4 finché il codice EPG core non viene recuperato.
+Fatto: fix del deploy Vercel rotto. Il commit `a09ebcd` su main aveva aggiunto i
+prototipi `oraintivu/` e `oraintivu_1/` nella root: `next build` li type-checkava e
+falliva. Spostati in `prototypes/` ed esclusi dal build (`tsconfig.json` exclude).
+Build verde in locale.
+Da sapere: i prototipi EPG core ora ESISTONO nel repo sotto `prototypes/oraintivu*`
+— sbloccano M2-M4 (porting verso `src/lib/epg/`). NON importarli in `src/`, sono
+solo riferimento (vedi `prototypes/README.md`).
 
 ## Variabili d'ambiente da configurare
 
