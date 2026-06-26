@@ -13,10 +13,17 @@
 - [x] M5 — API Route Handlers palinsesto (tonight/schedule/channels/revalidate + lib/api.ts, build + 41 test verdi)
 - [x] M6 — API Search + Admin (search + admin/unresolved + admin/approve, build + 70 test verdi)
 - [x] UI-1 — Layout + Home
-- [ ] UI-2 — Pagine Giorno + Canale
+- [x] UI-2 — Pagine Giorno + Canale (build + 70 test verdi)
 - [ ] UI-3 — Ricerca + Admin Panel
 
 ## Prossima sessione — inizia da qui
+
+**UI-2 CHIUSA. Inizia da UI-3:** esegui `prompts/UI-3_ricerca_admin.md`.
+Sono pronte: `/[data]` (palinsesto giorno, ISR 1h, generateStaticParams ieri+oggi+5 avanti,
+`DayNav` con limiti navigazione, 404 su data malformata) e `/canale/[slug]`
+(timeline oggi per canale, highlight "in corso" server-side, 404 su slug/canale inesistente).
+Nuovi componenti: `DayNav.tsx` (Client Component, Link), `Timeline.tsx` (Server Component,
+`<time>` semantico). Branch UI-2: `claude/prossimo-task-u2-hjzn7h`, build + 70 test verdi.
 
 **M1–M6 CHIUSI. TUTTE LE API BACKEND PRONTE.** Oltre al palinsesto (M5) ora ci sono:
 `/api/search?q=&limit=&offset=` (full-text tsvector, `EpgStore.search()` con
@@ -47,7 +54,7 @@ per il test ingest è in `src/lib/epg/__fixtures__/guide.xml`.
 ## Ultima sessione
 
 Data: 2026-06-26
-Branch: claude/prossimo-task-u1-etgxc8 (UI-1).
+Branch: claude/prossimo-task-u2-hjzn7h (UI-2).
 
 Fatto (sessione M6):
 - Creati 3 Route Handlers: `src/app/api/search/route.ts`,
